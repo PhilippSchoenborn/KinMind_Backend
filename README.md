@@ -1,4 +1,4 @@
-# kanMind_backend
+# core
 
 Dies ist ein Django-Projekt mit Django REST Framework.
 
