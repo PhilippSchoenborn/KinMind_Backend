@@ -1,17 +1,21 @@
+# Drittanbieter
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate
-from django.contrib.auth import get_user_model
-from .serializers import RegistrationSerializer, UserSerializer
 from rest_framework.views import APIView
+from django.contrib.auth import authenticate, get_user_model
+
+# Lokale Importe
+from .serializers import RegistrationSerializer, UserSerializer
 
 User = get_user_model()
 
 class RegistrationView(generics.CreateAPIView):
+    """API endpoint for user registration."""
     serializer_class = RegistrationSerializer
 
     def create(self, request, *args, **kwargs):
+        """Create a new user and return a token."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -25,7 +29,9 @@ class RegistrationView(generics.CreateAPIView):
         return Response(data, status=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
+    """API endpoint for user login."""
     def post(self, request):
+        """Authenticate user and return a token."""
         email = request.data.get('email')
         password = request.data.get('password')
         user = authenticate(request, username=email, password=password)
@@ -41,7 +47,9 @@ class LoginView(APIView):
         return Response({'detail': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 class EmailCheckView(APIView):
+    """API endpoint to check if an email exists."""
     def get(self, request):
+        """Return user data if email exists, else 404."""
         email = request.query_params.get('email')
         if not email:
             return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
