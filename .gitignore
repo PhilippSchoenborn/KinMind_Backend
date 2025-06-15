@@ -54,3 +54,4 @@ project.KanMind-main/
 # Project-specific
 Checkliste DjangoDRF-Projekte.txt
 kanmind API Endpoint Dokumentation.txt
+debug_utils.py
