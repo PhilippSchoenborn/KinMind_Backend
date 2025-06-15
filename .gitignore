@@ -37,8 +37,6 @@ db.sqlite3
 venv/
 ENV/
 
-# Ignore modul_7.1 directory
-modul_7.1/
 
 # Test coverage
 htmlcov/
@@ -55,6 +53,4 @@ coverage.xml
 project.KanMind-main/
 
 # Project-specific
-Checkliste DjangoDRF-Projekte.txt
-kanmind API Endpoint Dokumentation.txt
 debug_utils.py
