@@ -1,44 +1,61 @@
-from rest_framework import viewsets, status, generics
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
+
+from rest_framework import generics, status, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
 from kanban_app.models import Board, Task, Comment
 from .serializers import (
     BoardSerializer, BoardDetailSerializer, TaskSerializer, CommentSerializer
 )
-from .permissions import IsBoardOwnerOrMember, IsTaskBoardMember, IsCommentAuthor
+from .permissions import IsTaskBoardMember, IsCommentAuthor
 from django.contrib.auth import get_user_model
+
 
 User = get_user_model()
 
+
 class BoardViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing Board CRUD operations."""
     queryset = Board.objects.all()
     serializer_class = BoardSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """Return boards where the user is owner or member."""
         user = self.request.user
-        # Nur Boards, bei denen der User Owner oder Member ist, ohne Duplikate
-        return Board.objects.filter(members=user).union(Board.objects.filter(owner=user)).distinct()
+        qs = Board.objects.filter(Q(members=user) | Q(owner=user)).distinct()
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        """List all boards for the authenticated user."""
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({'detail': f'Internal Server Error: {e}'}, status=500)
 
     def retrieve(self, request, *args, **kwargs):
+        """Retrieve a specific board if the user has access."""
         try:
             board = self.get_queryset().get(pk=kwargs['pk'])
         except Board.DoesNotExist:
             return Response({'detail': 'Board not found.'}, status=status.HTTP_404_NOT_FOUND)
-        # Permission check
         if not (request.user == board.owner or request.user in board.members.all()):
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         serializer = BoardDetailSerializer(board)
         return Response(serializer.data)
 
     def get_serializer_class(self):
+        """Return the appropriate serializer class for detail or list."""
         if self.action == 'retrieve':
             return BoardDetailSerializer
         return BoardSerializer
 
     def create(self, request, *args, **kwargs):
+        """Create a new board and assign members."""
         data = request.data.copy()
         data['owner'] = request.user.id
         serializer = self.get_serializer(data=data)
@@ -53,6 +70,7 @@ class BoardViewSet(viewsets.ModelViewSet):
         return Response(out_serializer.data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
+        """Update board title or members."""
         board = self.get_object()
         self.check_object_permissions(request, board)
         title = request.data.get('title', board.title)
@@ -65,6 +83,7 @@ class BoardViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
+        """Delete a board if the user is the owner."""
         board = self.get_object()
         if board.owner != request.user:
             return Response({'detail': 'Only the owner can delete this board.'}, status=status.HTTP_403_FORBIDDEN)
@@ -140,7 +159,12 @@ class ReviewingTasksView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Task.objects.filter(reviewer=self.request.user)
+        """Return all tasks where the user is reviewer or assignee or board member/owner."""
+        user = self.request.user
+        reviewer_qs = Task.objects.filter(reviewer=user)
+        assignee_qs = Task.objects.filter(assignee=user)
+        board_qs = Task.objects.filter(board__members=user) | Task.objects.filter(board__owner=user)
+        return (reviewer_qs | assignee_qs | board_qs).distinct()
 
 class CommentListCreateView(generics.ListCreateAPIView):
     serializer_class = CommentSerializer
