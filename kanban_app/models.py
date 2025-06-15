@@ -1,12 +1,15 @@
-from django.db import models
+# Standardbibliothek
 from django.conf import settings
+from django.db import models
 
 class Board(models.Model):
+    """Model representing a Kanban board."""
     title = models.CharField(max_length=255)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='owned_boards')
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='boards')
 
     def __str__(self):
+        """String representation of the board."""
         return self.title
 
     class Meta:
@@ -15,6 +18,7 @@ class Board(models.Model):
         ordering = ['id']
 
 class Task(models.Model):
+    """Model representing a task on a board."""
     STATUS_CHOICES = [
         ('to-do', 'To Do'),
         ('in-progress', 'In Progress'),
@@ -37,6 +41,7 @@ class Task(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_tasks')
 
     def __str__(self):
+        """String representation of the task."""
         return self.title
 
     class Meta:
@@ -45,12 +50,14 @@ class Task(models.Model):
         ordering = ['id']
 
 class Comment(models.Model):
+    """Model representing a comment on a task."""
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        """String representation of the comment."""
         return f"Comment by {self.author.fullname} on {self.task.title}"
 
     class Meta:
